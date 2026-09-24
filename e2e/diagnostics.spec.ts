@@ -1,0 +1,5 @@
+import {test} from '@playwright/test';
+test('diagnostic mobile render',async({page})=>{
+  const errors:string[]=[];page.on('console',m=>{if(['error','warning'].includes(m.type()))errors.push(m.text());});page.on('pageerror',e=>errors.push(e.stack||e.message));
+  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.getByRole('button',{name:'Take a seat',exact:true}).click();await page.getByLabel('Players, including you').selectOption('9');await page.getByLabel('Game pace').selectOption('Fast');await page.getByRole('dialog').getByRole('button',{name:'Take a seat'}).click();await page.locator('.turn-note').waitFor({timeout:40000});await page.screenshot({path:'artifacts/diagnostic.png',fullPage:true});console.log(JSON.stringify({errors,seats:await page.locator('.seat').allTextContents(),styles:await page.locator('body').evaluate(e=>({font:getComputedStyle(e).fontFamily})),overflow:await page.evaluate(()=>[document.documentElement.scrollWidth,innerWidth])},null,2));
+});
