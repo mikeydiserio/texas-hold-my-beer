@@ -1,6 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 async function setup(page:Page,players='6',speed='Fast'){
-  await page.goto('/');await page.getByRole('button',{name:'Take a seat',exact:true}).click();await page.getByLabel('Players, including you').selectOption(players);await page.getByLabel('Game pace').selectOption(speed);await page.getByRole('dialog').getByRole('button',{name:'Take a seat',exact:true}).click();await expect(page.locator('.hand-number')).toHaveText('HAND 001');await expect(page.locator('[data-render-ready=true]')).toHaveCount(1,{timeout:40000});
+  await page.goto('/holdem');await page.getByRole('button',{name:'Take a seat',exact:true}).click();await page.getByLabel('Players, including you').selectOption(players);await page.getByLabel('Game pace').selectOption(speed);await page.getByRole('dialog').getByRole('button',{name:'Take a seat',exact:true}).click();await expect(page.locator('.hand-number')).toHaveText('HAND 001');await expect(page.locator('[data-render-ready=true]')).toHaveCount(1,{timeout:40000});
 }
 test('desktop: setup, 3D, live AI, controls, history, pause, settings and refresh',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));

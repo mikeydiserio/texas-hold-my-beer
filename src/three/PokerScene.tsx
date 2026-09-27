@@ -9,6 +9,7 @@ import {Card3D} from './cards/Card3D';
 import {ChipStack,MovingChips} from './chips/Chips';
 import {seatPosition} from './table/positions';
 import {feltTexture,logoTexture} from './textures';
+import {ThinkingDots} from '../ui/StreetCall';
 const fmt=(n:number)=>n.toLocaleString('en-US');
 function Camera({overhead,reduced,cue}:{overhead:boolean;reduced:boolean;cue:string}){
   const {camera,size}=useThree(),target=useMemo(()=>new Vector3(),[]),last=useRef(cue),pulse=useRef(0);
@@ -26,14 +27,14 @@ function ProjectLabels({root,revision}:{root:RefObject<HTMLDivElement|null>;revi
 }
 function Table(){const felt=useMemo(feltTexture,[]),logo=useMemo(logoTexture,[]);return <group>
   <mesh position={[0,-.3,0]} scale={[5.72,1,3.16]} castShadow receiveShadow><cylinderGeometry args={[1,1,.42,96]}/><meshStandardMaterial color="#211c16" roughness={.35} metalness={.2}/></mesh>
-  <mesh position={[0,-.065,0]} scale={[5.68,1,3.12]} castShadow><cylinderGeometry args={[1,1,.05,96]}/><meshStandardMaterial color="#a18d5f" roughness={.3} metalness={.6}/></mesh>
-  <mesh position={[0,.13,0]} scale={[5.62,1,3.06]} castShadow receiveShadow><cylinderGeometry args={[1,1,.34,96]}/><meshStandardMaterial color="#121915" roughness={.76}/></mesh>
-  <mesh position={[0,.28,0]} rotation={[-Math.PI/2,0,0]} scale={[5.32,2.78,1.8]} castShadow receiveShadow><torusGeometry args={[1,.075,16,96]}/><meshStandardMaterial color="#171e19" roughness={.58}/></mesh>
+  <mesh position={[0,-.065,0]} scale={[5.68,1,3.12]} castShadow><cylinderGeometry args={[1,1,.05,96]}/><meshStandardMaterial color="#e83235" roughness={.55} metalness={.05}/></mesh>
+  <mesh position={[0,.13,0]} scale={[5.62,1,3.06]} castShadow receiveShadow><cylinderGeometry args={[1,1,.34,96]}/><meshStandardMaterial color="#201d21" roughness={.76}/></mesh>
+  <mesh position={[0,.28,0]} rotation={[-Math.PI/2,0,0]} scale={[5.32,2.78,1.8]} castShadow receiveShadow><torusGeometry args={[1,.075,16,96]}/><meshStandardMaterial color="#1a181b" roughness={.62}/></mesh>
   <mesh position={[0,.305,0]} scale={[5.12,1,2.59]} receiveShadow><cylinderGeometry args={[1,1,.03,96]}/><meshStandardMaterial map={felt} roughness={1}/></mesh>
-  <mesh rotation={[-Math.PI/2,0,0]} position={[0,.335,0]} scale={[4.84,2.32,1]}><torusGeometry args={[1,.003,4,96]}/><meshBasicMaterial color="#b6c4a0" transparent opacity={.38}/></mesh>
+  <mesh rotation={[-Math.PI/2,0,0]} position={[0,.335,0]} scale={[4.84,2.32,1]}><torusGeometry args={[1,.003,4,96]}/><meshBasicMaterial color="#f3edda" transparent opacity={.38}/></mesh>
   <mesh rotation={[-Math.PI/2,0,0]} position={[0,.34,1]}><planeGeometry args={[3.3,.825]}/><meshBasicMaterial map={logo} transparent depthWrite={false}/></mesh>
-  <mesh position={[0,-2.05,0]} receiveShadow rotation={[-Math.PI/2,0,0]}><planeGeometry args={[200,200]}/><meshStandardMaterial color="#0b140f" roughness={1}/></mesh>
-  {[-3.3,3.3].map(x=><mesh key={x} position={[x,-1.25,0]} castShadow><cylinderGeometry args={[.35,.55,2.2,24]}/><meshStandardMaterial color="#151916" metalness={.5} roughness={.6}/></mesh>)}
+  <mesh position={[0,-2.05,0]} receiveShadow rotation={[-Math.PI/2,0,0]}><planeGeometry args={[200,200]}/><meshStandardMaterial color="#141316" roughness={1}/></mesh>
+  {[-3.3,3.3].map(x=><mesh key={x} position={[x,-1.25,0]} castShadow><cylinderGeometry args={[.35,.55,2.2,24]}/><meshStandardMaterial color="#201d21" metalness={.5} roughness={.6}/></mesh>)}
   <ChipStack amount={750} position={[-2.2,.35,-1.6]}/><Card3D card="As" position={[-1.5,.4,-1.65]} faceUp={false} reduced/>
   </group>;}
 function Dealer({index,count,reduced}:{index:number;count:number;reduced:boolean}){
@@ -48,13 +49,13 @@ function TablePlayers({game}:{game:GameState}){
   })}</>;
 }
 function Labels({game}:{game:GameState}){return <div className="seat-overlays" data-count={game.players.length}>{game.players.map((p,i)=>{const pos=seatPosition(i,game.players.length,p.isHuman?1.48:1.22),bet=seatPosition(i,game.players.length,.63),won=game.awards.some(a=>a.playerIndex===i&&!a.refund),active=i===game.currentPlayerIndex;return <div key={p.id}>
-  <div className="seat-anchor" data-table-anchor={[pos[0],p.isHuman?.3:.65,pos[2]].join(',')}><div className={`seat ${active?'acting':''} ${p.folded||p.eliminated?'inactive':''} ${won?'winner':''} ${p.isHuman?'human':''}`} title={`${p.aiProfile.toLowerCase()} personality`}><span className={`avatar avatar-${i}`}>{p.isHuman?'Y':p.name[0]}</span><div className="seat-info"><strong>{p.name}{p.isHuman&&<em>YOU</em>}</strong><span>{p.eliminated?'OUT':fmt(p.stack)}</span></div><div className="seat-status">{active?'Thinking…':game.results[i]?.name||p.lastAction||p.aiProfile.toLowerCase()}</div>{(i===game.dealerIndex||i===game.smallBlindIndex||i===game.bigBlindIndex)&&<div className="seat-markers">{i===game.dealerIndex&&<b>D</b>}{i===game.smallBlindIndex&&<span>SB</span>}{i===game.bigBlindIndex&&<span>BB</span>}</div>}</div></div>
+  <div className="seat-anchor" data-table-anchor={[pos[0],p.isHuman?.3:.65,pos[2]].join(',')}><div className={`seat ${active?'acting':''} ${p.folded||p.eliminated?'inactive':''} ${won?'winner':''} ${p.isHuman?'human':''}`} title={`${p.aiProfile.toLowerCase()} personality`}><span className={`avatar avatar-${i}`}>{p.isHuman?'Y':p.name[0]}</span><div className="seat-info"><strong>{p.name}{p.isHuman&&<em>YOU</em>}</strong><span>{p.eliminated?'OUT':fmt(p.stack)}</span></div><div className="seat-status">{active&&p.isHuman?'Your turn':game.results[i]?.name||p.lastAction||p.aiProfile.toLowerCase()}</div>{active&&!p.isHuman&&<div className="seat-thinking" aria-hidden="true">Thinking<ThinkingDots/></div>}{(i===game.dealerIndex||i===game.smallBlindIndex||i===game.bigBlindIndex)&&<div className="seat-markers">{i===game.dealerIndex&&<b>D</b>}{i===game.smallBlindIndex&&<span>SB</span>}{i===game.bigBlindIndex&&<span>BB</span>}</div>}</div></div>
   {p.currentBet>0&&<div className="bet-anchor" data-table-anchor={[bet[0],.75,bet[2]].join(',')}><span className="bet-label">{fmt(p.currentBet)}</span></div>}
   </div>;})}</div>;}
 function Contents({game,inspect,root}:{game:GameState|null;inspect:boolean;root:RefObject<HTMLDivElement|null>}){
   const prefs=useGame(s=>s.preferences),n=game?.players.length||6,reduced=prefs.reducedMotion||prefs.speed==='Instant';
   const winnerCards=new Set(game?.awards.filter(a=>!a.refund).flatMap(a=>game.results[a.playerIndex]?.bestFive||[]));
-  return <><color attach="background" args={['#0c1410']}/><fog attach="fog" args={['#0c1410',28,65]}/><ambientLight intensity={.8}/><hemisphereLight args={['#f1eed9','#24372b',1.2]}/><directionalLight position={[-3,9,3]} intensity={2.3} color="#fff2d5" castShadow shadow-mapSize={[1024,1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-bias={-.001}/><pointLight position={[3,4,-4]} intensity={25} color="#98bba4"/>
+  return <><color attach="background" args={['#141316']}/><fog attach="fog" args={['#141316',28,65]}/><ambientLight intensity={.8}/><hemisphereLight args={['#f1eed9','#35272d',1.2]}/><directionalLight position={[-3,9,3]} intensity={2.3} color="#fff2d5" castShadow shadow-mapSize={[1024,1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-bias={-.001}/><pointLight position={[3,4,-4]} intensity={25} color="#e8c9c1"/>
     {!inspect&&<Camera overhead={prefs.camera==='overhead'} reduced={reduced} cue={`${game?.handNumber}-${game?.phase}`}/>}<ProjectLabels root={root} revision={game?.nextEventId||0}/><Table/>
     {game?<><TablePlayers game={game}/>{game.communityCards.map((c,i)=><Card3D key={`${game.handNumber}-${c}`} card={c} position={[(i-2)*.75,.38,0]} delay={i<3?i*.13:0} folded={game.phase==='HAND_COMPLETE'} highlight={winnerCards.has(c)} reduced={reduced}/>)}
       <ChipStack amount={Math.max(0,game.pot-game.players.reduce((v,p)=>v+p.currentBet,0))} position={[0,.35,-1.05]}/><Dealer index={game.dealerIndex} count={n} reduced={reduced}/>

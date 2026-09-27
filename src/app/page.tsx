@@ -1,2 +1,2 @@
-import GameApp from '../ui/GameApp';
-export default function Page(){return <GameApp/>;}
+import GameMenu from '../ui/club/GameMenu';
+export default function Page(){return <GameMenu/>;}

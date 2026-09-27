@@ -1,6 +1,6 @@
-# After Hours — The Green Room
+# MIKEYS POKER CLUB
 
-A complete, client-side 3D no-limit Texas Hold’em simulator. **Play chips only.** No accounts, backend, payments, or real-money features.
+A client-side game room with 3D no-limit Texas Hold’em, blackjack, Klondike solitaire, and 3D European roulette. **Play chips only.** No accounts, backend, payments, or real-money features.
 
 ## Run
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, choose **Take a seat**, configure 2–9 players, and play.
+Open http://localhost:3000 and choose a game. For Texas Hold’em, choose **Take a seat** and configure 2–9 players. Direct routes are `/holdem`, `/blackjack`, `/solitaire`, and `/roulette`; the MIKEYS POKER CLUB wordmark returns to the menu.
 
 ```sh
 npm test                  # Pure engine / AI tests
@@ -24,6 +24,23 @@ npm run test:e2e          # Browser tests (dev server must be running)
 The production output can be served by any static web host. Use `npm run preview` to serve it locally. Gameplay requires no application server or authentication. Preferences persist locally; refreshing returns to a clean table setup rather than restoring a partial hand.
 
 ## Controls
+
+### Roulette
+
+- European single-zero wheel with 37 pockets. Place straight-up, dozen, column, or even-money bets using the 3D layout or the HTML betting controls. Choose a chip, place bets, then spin. Undo, clear, and rebet operate on unplayed chips; all betting locks during a spin.
+- Each spin draws a fresh result using `crypto.getRandomValues` with rejection sampling to avoid modulo bias. Outcomes are independent: consecutive repeats are possible. The ball animation lands in the selected pocket, and that same result settles the bets. Animation is choreographed, rather than a physics-based source of randomness.
+- The Three.js scene includes a wooden wheel, brass separators and deflectors, a ball with a launch, orbit, drop and bounce sequence, a felt table, and clickable chip positions. The camera follows the ball and briefly holds the winning pocket; the inspect control enables orbit and zoom. Reduced motion presents the result without the spin or camera motion.
+- Straight-up bets pay 35:1, dozens and columns 2:1, and even-money bets 1:1, with the winning stake returned. Zero loses all outside bets. See the [MGM roulette guide](https://www.mgmresorts.com/en/gamesense/guide-to-roulette.html) for standard payouts. Refill free chips if the balance falls below the five-chip minimum.
+- Rules and animation coordinates live in `src/games/roulette.ts`, session state in `src/state/roulette-store.ts`, and the 3D scene in `src/three/roulette`. Tests cover all pocket landing coordinates, payouts, chip accounting, random sampling, betting locks, desktop rendering, and mobile controls.
+
+### Blackjack and solitaire
+
+- Blackjack uses six decks, pays naturals at 3:2, and stands on soft 17. Hit, stand, double (including after a split), or split once. Split aces receive one card each; split 21 pays 1:1. No insurance or surrender. Refill free play chips when the balance drops below the minimum wager.
+- Solitaire is draw-one Klondike with unlimited stock recycling. Click a card and its destination, drag a sequence, or double-click a card to send it to a foundation. Undo supports Ctrl / ⌘ + Z; hints highlight a move; Auto moves only safe foundation cards. Deals are random, not guaranteed solvable.
+- New games use optional sound and respect the system reduced-motion setting. Sessions remain in memory when navigating through the menu; refresh starts fresh.
+- Pure rules live in `src/games`; the menu, new tables, and scoped styles live in `src/ui/club`. The existing poker engine and 3D renderer are unchanged.
+
+### Texas Hold’em
 
 - **F**: fold, **C**: check/call, **R**: bet/raise the chosen amount, **A**: all-in.
 - Shortcuts only operate on your turn, outside form inputs and dialogs.
