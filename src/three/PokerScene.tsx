@@ -8,8 +8,12 @@ import type {GameState} from '../game/types';
 import {Card3D} from './cards/Card3D';
 import {ChipStack,MovingChips} from './chips/Chips';
 import {seatPosition} from './table/positions';
-import {feltTexture,logoTexture} from './textures';
+import {dealerTexture,feltTexture,logoTexture} from './textures';
+import {PAPER,RED,printMaterial} from './print';
 import {ThinkingDots} from '../ui/StreetCall';
+import {Crowd} from './venue/Crowd';
+import {SeatedPlayers} from './venue/SeatedPlayers';
+import {Venue} from './venue/Venue';
 const fmt=(n:number)=>n.toLocaleString('en-US');
 function Camera({overhead,reduced,cue}:{overhead:boolean;reduced:boolean;cue:string}){
   const {camera,size}=useThree(),target=useMemo(()=>new Vector3(),[]),last=useRef(cue),pulse=useRef(0);
@@ -25,20 +29,21 @@ function ProjectLabels({root,revision}:{root:RefObject<HTMLDivElement|null>;revi
     for(const {el,pos} of anchors.current){point.set(pos[0],pos[1],pos[2]).project(camera);let x=(point.x+1)*size.width/2,y=(-point.y+1)*size.height/2;if(el.classList.contains('seat-anchor')){const pad=size.width<700?37:70;x=MathUtils.clamp(x,pad,size.width-pad);y=MathUtils.clamp(y,70,size.height-45);}el.style.left='0';el.style.top='0';el.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;}
   });return null;
 }
+const RAIL=printMaterial('#211d22'),PEDESTAL=printMaterial('#1a171b'),BAND=printMaterial(RED);
 function Table(){const felt=useMemo(feltTexture,[]),logo=useMemo(logoTexture,[]);return <group>
-  <mesh position={[0,-.3,0]} scale={[5.72,1,3.16]} castShadow receiveShadow><cylinderGeometry args={[1,1,.42,96]}/><meshStandardMaterial color="#211c16" roughness={.35} metalness={.2}/></mesh>
-  <mesh position={[0,-.065,0]} scale={[5.68,1,3.12]} castShadow><cylinderGeometry args={[1,1,.05,96]}/><meshStandardMaterial color="#e83235" roughness={.55} metalness={.05}/></mesh>
-  <mesh position={[0,.13,0]} scale={[5.62,1,3.06]} castShadow receiveShadow><cylinderGeometry args={[1,1,.34,96]}/><meshStandardMaterial color="#201d21" roughness={.76}/></mesh>
-  <mesh position={[0,.28,0]} rotation={[-Math.PI/2,0,0]} scale={[5.32,2.78,1.8]} castShadow receiveShadow><torusGeometry args={[1,.075,16,96]}/><meshStandardMaterial color="#1a181b" roughness={.62}/></mesh>
-  <mesh position={[0,.305,0]} scale={[5.12,1,2.59]} receiveShadow><cylinderGeometry args={[1,1,.03,96]}/><meshStandardMaterial map={felt} roughness={1}/></mesh>
-  <mesh rotation={[-Math.PI/2,0,0]} position={[0,.335,0]} scale={[4.84,2.32,1]}><torusGeometry args={[1,.003,4,96]}/><meshBasicMaterial color="#f3edda" transparent opacity={.38}/></mesh>
+  <mesh position={[0,-.3,0]} scale={[5.72,1,3.16]} material={PEDESTAL} castShadow receiveShadow><cylinderGeometry args={[1,1,.42,96]}/></mesh>
+  <mesh position={[0,-.065,0]} scale={[5.68,1,3.12]} material={BAND} castShadow><cylinderGeometry args={[1,1,.05,96]}/></mesh>
+  <mesh position={[0,.13,0]} scale={[5.62,1,3.06]} material={RAIL} castShadow receiveShadow><cylinderGeometry args={[1,1,.34,96]}/></mesh>
+  <mesh position={[0,.28,0]} rotation={[-Math.PI/2,0,0]} scale={[5.32,2.78,1.8]} material={RAIL} castShadow receiveShadow><torusGeometry args={[1,.075,16,96]}/></mesh>
+  <mesh position={[0,.305,0]} scale={[5.12,1,2.59]} receiveShadow><cylinderGeometry args={[1,1,.03,96]}/><meshLambertMaterial map={felt}/></mesh>
+  <mesh rotation={[-Math.PI/2,0,0]} position={[0,.335,0]} scale={[4.84,2.32,1]}><torusGeometry args={[1,.006,4,96]}/><meshBasicMaterial color={PAPER} transparent opacity={.45}/></mesh>
+  <mesh rotation={[-Math.PI/2,0,0]} position={[0,.336,0]} scale={[4.6,2.1,1]}><torusGeometry args={[1,.004,4,96]}/><meshBasicMaterial color={RED} transparent opacity={.5}/></mesh>
   <mesh rotation={[-Math.PI/2,0,0]} position={[0,.34,1]}><planeGeometry args={[3.3,.825]}/><meshBasicMaterial map={logo} transparent depthWrite={false}/></mesh>
-  <mesh position={[0,-2.05,0]} receiveShadow rotation={[-Math.PI/2,0,0]}><planeGeometry args={[200,200]}/><meshStandardMaterial color="#141316" roughness={1}/></mesh>
-  {[-3.3,3.3].map(x=><mesh key={x} position={[x,-1.25,0]} castShadow><cylinderGeometry args={[.35,.55,2.2,24]}/><meshStandardMaterial color="#201d21" metalness={.5} roughness={.6}/></mesh>)}
-  <ChipStack amount={750} position={[-2.2,.35,-1.6]}/><Card3D card="As" position={[-1.5,.4,-1.65]} faceUp={false} reduced/>
+  {[-3.3,3.3].map(x=><mesh key={x} position={[x,-1.25,0]} material={PEDESTAL} castShadow><cylinderGeometry args={[.35,.55,2.2,24]}/></mesh>)}
   </group>;}
 function Dealer({index,count,reduced}:{index:number;count:number;reduced:boolean}){
-  const ref=useRef<Group>(null),target=useMemo(()=>new Vector3(),[]);useFrame((_,dt)=>{const p=seatPosition(index,count,.76);target.set(p[0]+.6,.39,p[2]+.35);ref.current?.position.lerp(target,reduced?1:1-Math.exp(-dt*5));});return <group ref={ref}><mesh><cylinderGeometry args={[.16,.16,.045,24]}/><meshStandardMaterial color="#e5dbb5" roughness={.65}/></mesh><mesh position={[0,.024,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[.1,.11,24]}/><meshBasicMaterial color="#2a3824"/></mesh></group>;
+  const ref=useRef<Group>(null),target=useMemo(()=>new Vector3(),[]),face=useMemo(dealerTexture,[]);useFrame((_,dt)=>{const p=seatPosition(index,count,.76);target.set(p[0]+.6,.39,p[2]+.35);ref.current?.position.lerp(target,reduced?1:1-Math.exp(-dt*5));});
+  return <group ref={ref}><mesh material={printMaterial(PAPER)} castShadow><cylinderGeometry args={[.16,.16,.045,24]}/></mesh><mesh position={[0,.0235,0]} rotation={[-Math.PI/2,0,0]}><circleGeometry args={[.16,24]}/><meshBasicMaterial map={face}/></mesh></group>;
 }
 function TablePlayers({game}:{game:GameState}){
   const prefs=useGame(s=>s.preferences),n=game.players.length;
@@ -55,13 +60,13 @@ function Labels({game}:{game:GameState}){return <div className="seat-overlays" d
 function Contents({game,inspect,root}:{game:GameState|null;inspect:boolean;root:RefObject<HTMLDivElement|null>}){
   const prefs=useGame(s=>s.preferences),n=game?.players.length||6,reduced=prefs.reducedMotion||prefs.speed==='Instant';
   const winnerCards=new Set(game?.awards.filter(a=>!a.refund).flatMap(a=>game.results[a.playerIndex]?.bestFive||[]));
-  return <><color attach="background" args={['#141316']}/><fog attach="fog" args={['#141316',28,65]}/><ambientLight intensity={.8}/><hemisphereLight args={['#f1eed9','#35272d',1.2]}/><directionalLight position={[-3,9,3]} intensity={2.3} color="#fff2d5" castShadow shadow-mapSize={[1024,1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-bias={-.001}/><pointLight position={[3,4,-4]} intensity={25} color="#e8c9c1"/>
-    {!inspect&&<Camera overhead={prefs.camera==='overhead'} reduced={reduced} cue={`${game?.handNumber}-${game?.phase}`}/>}<ProjectLabels root={root} revision={game?.nextEventId||0}/><Table/>
+  return <><color attach="background" args={['#141316']}/><fog attach="fog" args={['#141316',28,65]}/><ambientLight intensity={.55}/><hemisphereLight args={['#f3edda','#2a1418',1]}/><directionalLight position={[-3,9,3]} intensity={2.3} color="#fff2d5" castShadow shadow-mapSize={[1024,1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-bias={-.001}/><pointLight position={[3,4,-4]} intensity={25} color="#e8c9c1"/>
+    {!inspect&&<Camera overhead={prefs.camera==='overhead'} reduced={reduced} cue={`${game?.handNumber}-${game?.phase}`}/>}<ProjectLabels root={root} revision={game?.nextEventId||0}/><Table/><Venue/><Crowd game={game} reduced={reduced}/><SeatedPlayers game={game} reduced={reduced}/>
     {game?<><TablePlayers game={game}/>{game.communityCards.map((c,i)=><Card3D key={`${game.handNumber}-${c}`} card={c} position={[(i-2)*.75,.38,0]} delay={i<3?i*.13:0} folded={game.phase==='HAND_COMPLETE'} highlight={winnerCards.has(c)} reduced={reduced}/>)}
       <ChipStack amount={Math.max(0,game.pot-game.players.reduce((v,p)=>v+p.currentBet,0))} position={[0,.35,-1.05]}/><Dealer index={game.dealerIndex} count={n} reduced={reduced}/>
       {game.events.slice(-20).filter(e=>e.type==='BET'||e.type==='AWARD').map(e=><MovingChips key={e.id} from={e.type==='BET'?seatPosition(e.playerIndex!,n,.9):[0,.4,-1.05]} to={e.type==='AWARD'?seatPosition(e.playerIndex!,n,.9):seatPosition(e.playerIndex!,n,.63)} amount={e.amount||100} reduced={reduced}/>)}
       {game.events.slice(-12).filter(e=>e.type==='COLLECT').flatMap(e=>(e.contributions||[]).map(c=><MovingChips key={`${e.id}-${c.playerIndex}`} from={seatPosition(c.playerIndex,n,.63)} to={[0,.4,-1.05]} amount={c.amount} reduced={reduced}/>))}
-    </>:<>{Array.from({length:6},(_,i)=><group key={i}><ChipStack amount={2500} position={seatPosition(i,6,.85)}/>{[0,1].map(j=><Card3D key={j} card={j?'Kh':'As'} position={[seatPosition(i,6,.84)[0]+(j-.5)*.45,.5,seatPosition(i,6,.84)[2]]} faceUp={false} reduced/>)}</group>)}</>}
+    </>:<>{Array.from({length:6},(_,i)=>{const pos=seatPosition(i,6,.87);return <group key={i}><ChipStack amount={2500} position={[pos[0]+(pos[0]>0?-.7:.7),.35,pos[2]+.25]}/>{[0,1].map(j=><Card3D key={j} card={j?'Kh':'As'} position={[pos[0]+(j-.5)*.45,pos[1]+j*.01,pos[2]]} rotation={(j-.5)*-.16} faceUp={false} reduced/>)}</group>;})}</>}
     {inspect&&<OrbitControls makeDefault target={[0,0,0]} minDistance={8} maxDistance={25} minPolarAngle={.15} maxPolarAngle={1.25} enablePan={false}/>}
   </>;
 }

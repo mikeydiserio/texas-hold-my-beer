@@ -51,6 +51,7 @@ The production output can be served by any static web host. Use `npm run preview
 - Settings include pace, camera, motion, sound, made-hand helper, pot odds, win odds, hints, and automatic mucking.
 - The panel under the table shows your hole cards beside the board. Your best five cards are outlined (the made part of the hand is lifted) and unused cards dim. Win/split odds, the chance to improve by the river, outs, and a tip comparing your pot share with the price of a call update each street. Odds are Monte Carlo estimates against random opponent hands, computed in a Web Worker so play never pauses.
 - The accessible table view provides textual cards, stacks, bets, dealer/blind markers, and showdown hands. All betting controls are HTML.
+- Each AI seat has a rim-lit silhouette that leans in to think, pushes chips when betting, sits back after folding, and celebrates a win. Personalities wear a tell: sunglasses (tight), fedora (aggressive), backwards cap (maniac), headphones (passive), hair bun (loose). A crowd behind the rope leans in during all-ins and cheers at showdowns, louder for bigger pots. Busted seats leave an empty chair. Reduced motion holds every figure still.
 
 ## Architecture
 
@@ -58,7 +59,7 @@ The production output can be served by any static web host. Use `npm run preview
 
 `src/state` contains the Zustand authority and local preferences. A cryptographic seed is generated when starting a table; replaying the same seed and actions reproduces the game.
 
-`src/three` contains procedural table, cards, chips, camera, and event-driven animation. Rendering never decides outcomes. HTML seat labels stay in the main React root; frame updates only project their visual positions.
+`src/three` contains procedural table, cards, chips, camera, and event-driven animation. `src/three/venue` adds the room: seated silhouettes, an instanced crowd (three draw calls), carpet, barrier, and backdrop, all shaded by one unlit rim-light material. Rendering never decides outcomes. HTML seat labels stay in the main React root; frame updates only project their visual positions.
 
 `src/ui` contains configuration, controls, history, accessibility, optional synthesized audio, and the clock that schedules engine actions. AI postflop equity calculations and the player's win-odds helper (`src/game/odds.ts`) run in Web Workers with bounded synchronous fallbacks. Worker constructors live in `src/game/workers.ts` so Turbopack bundles them as worker entry points.
 

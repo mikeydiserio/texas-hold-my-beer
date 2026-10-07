@@ -382,7 +382,8 @@ describe('validation, privacy and long-game invariants', () => {
     state = act(state, { type: 'FOLD' });
     const view = observe(state);
     expect(view.opponents.map(p => p.seat)).toEqual([0, 1, 2, 5]);
-    expect(view.history.at(-1)?.text).toBe('Mei · Fold');
+    expect(view.history.at(-1)?.text).toBe(`${state.players[3].name} · Fold`);
+    expect(view.actions).toEqual([{ seat: 3, street: 'PREFLOP', type: 'FOLD', to: 0, aggressive: false }]);
     expect(state.players[3].holeCards).toHaveLength(2);
   });
 

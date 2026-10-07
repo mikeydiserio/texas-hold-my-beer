@@ -1,11 +1,11 @@
 'use client';
 import { useMemo,useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { CylinderGeometry,Group,MeshStandardMaterial } from 'three';
-import { chipColors,chipTexture } from '../textures';
+import { CylinderGeometry,Group,MeshToonMaterial } from 'three';
+import { chipEdgeTexture,chipTexture } from '../textures';
 const geometry=new CylinderGeometry(.145,.145,.047,24);
-const materials=new Map<number,MeshStandardMaterial[]>();
-function material(value:number){if(!materials.has(value)){const top=new MeshStandardMaterial({map:chipTexture(value),roughness:.65});materials.set(value,[new MeshStandardMaterial({color:chipColors[value],roughness:.75}),top,top]);}return materials.get(value)!;}
+const materials=new Map<number,MeshToonMaterial[]>();
+function material(value:number){if(!materials.has(value)){const top=new MeshToonMaterial({map:chipTexture(value)});materials.set(value,[new MeshToonMaterial({map:chipEdgeTexture(value)}),top,top]);}return materials.get(value)!;}
 export function ChipStack({amount,position=[0,.5,0]}:{amount:number;position?:[number,number,number]}){
   const stacks=useMemo(()=>{let remaining=amount;return [1000,500,100,25,5,1].flatMap(value=>{const n=Math.floor(remaining/value);remaining%=value;return n?[{value,count:Math.min(n,8)}]:[];});},[amount]);
   return <group position={position}>{stacks.map(({value,count},col)=>Array.from({length:count},(_,i)=><mesh key={`${value}-${i}`} geometry={geometry} material={material(value)} position={[(col-(stacks.length-1)/2)*.29,i*.048+.024,0]} rotation={[0,(i%3)*.17,0]} castShadow/>))}</group>;

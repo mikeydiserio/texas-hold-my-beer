@@ -12,7 +12,7 @@ export function assignCards(state:GameState,holeText:string,boardText:string):Ga
 }
 export function forceStacks(state:GameState,text:string):GameState{
   const stacks=text.split(/[ ,]+/).map(Number);if(stacks.length!==state.players.length||stacks.some(n=>!Number.isSafeInteger(n)||n<0||n>1000000)||stacks.filter(n=>n>0).length<2)throw new Error('Enter one non-negative whole stack per seat, with at least two players funded.');
-  const s=createGame(state.config,state.rng);s.players.forEach((p,i)=>p.stack=stacks[i]);s.initialChips=stacks.reduce((a,b)=>a+b,0);return startHand(s);
+  const s=createGame(state.config,state.rng);s.players.forEach((p,i)=>{p.stack=stacks[i];p.name=state.players[i].name;p.aiProfile=state.players[i].aiProfile;});s.initialChips=stacks.reduce((a,b)=>a+b,0);return startHand(s);
 }
 export function allInScenario(state:GameState):GameState{
   let s=createGame({...state.config,playerCount:3,startingStack:2500,smallBlind:25,bigBlind:50},1873);[300,900,2500].forEach((v,i)=>s.players[i].stack=v);s.initialChips=3700;s=startHand(s);

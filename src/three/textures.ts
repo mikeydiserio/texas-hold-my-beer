@@ -1,7 +1,8 @@
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
+import { CanvasTexture, SRGBColorSpace } from 'three';
+import { INK, PAPER, RED, halftone, sunburst } from './print';
 import { suit, SUIT_SYMBOLS } from '../game/cards';
 import type { Card } from '../game/types';
-const INK='#141316',PAPER='#f3edda',RED='#e83235',CARD_RED='#d42a31';
+const CARD_RED='#d42a31';
 const cache=new Map<string,CanvasTexture>();
 const fontVar=(name:string,fallback:string)=>(typeof document==='undefined'?'':getComputedStyle(document.documentElement).getPropertyValue(name).trim())||fallback;
 const display=(size:number)=>`${size}px ${fontVar('--font-display','Impact')}, Impact, sans-serif`;
@@ -15,7 +16,6 @@ function texture(key:string,w:number,h:number,draw:(ctx:CanvasRenderingContext2D
   void document.fonts?.load(display(40)).then(()=>{paint();t.needsUpdate=true;}).catch(()=>{});
   return t;
 }
-function halftone(ctx:CanvasRenderingContext2D,w:number,h:number,step:number,radius:number,color:string){ctx.fillStyle=color;for(let y=0;y<h+step;y+=step)for(let x=(y/step)%2?step/2:0;x<w+step;x+=step){ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();}}
 function crown(ctx:CanvasRenderingContext2D,x:number,y:number,w:number){const s=w/100;ctx.save();ctx.translate(x-w/2,y);ctx.scale(s,s);ctx.beginPath();ctx.moveTo(4,58);ctx.lineTo(9,14);ctx.lineTo(30,36);ctx.lineTo(50,2);ctx.lineTo(70,36);ctx.lineTo(91,14);ctx.lineTo(96,58);ctx.closePath();ctx.fill();ctx.fillRect(4,63,92,11);ctx.restore();}
 function cardBack(ctx:CanvasRenderingContext2D){
   ctx.fillStyle=PAPER;ctx.fillRect(0,0,256,368);ctx.fillStyle='#c9252f';ctx.fillRect(12,12,232,344);
@@ -46,12 +46,37 @@ export function cardTexture(card:Card|'back'){
     }
   });
 }
-export function feltTexture(){const t=texture('felt',256,256,ctx=>{ctx.fillStyle='#5a1f29';ctx.fillRect(0,0,256,256);let seed=31;for(let i=0;i<18000;i++){seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;seed>>>=0;const x=seed%256;seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;seed>>>=0;ctx.fillStyle=i%2?'#ffffff09':'#00000012';ctx.fillRect(x,seed%256,1,2);}halftone(ctx,256,256,16,1.7,'#0000001c');});t.wrapS=t.wrapT=RepeatWrapping;t.repeat.set(7,4);return t;}
+/** One non-repeating felt sheet, drawn 2:1 so the dot screen stays round on the oval table top. Same
+ *  sunburst and halftone vignette as the CSS blackjack table. */
+export function feltTexture(){return texture('felt',1024,512,ctx=>{
+  const glow=ctx.createRadialGradient(512,256,0,512,256,560);glow.addColorStop(0,'#7c2632');glow.addColorStop(.55,'#56212b');glow.addColorStop(1,'#3b111a');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,1024,512);
+  sunburst(ctx,512,256,700,36,'#f3edda0a');
+  let seed=31;const rand=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;seed>>>=0;return seed/4294967296;};
+  for(let i=0;i<40000;i++){ctx.fillStyle=i%2?'#ffffff08':'#00000014';ctx.fillRect(rand()*1024,rand()*512,1,2);}
+  halftone(ctx,1024,512,9,(x,y)=>{const d=Math.hypot((x-512)/512,(y-256)/256);return Math.max(0,(d-.7)/.3)*2.2;},'#0b030677');
+});}
 export function logoTexture(){return texture('logo',1024,256,ctx=>{ctx.textAlign='center';ctx.font=display(84);ctx.fillStyle='#e8323580';ctx.fillText('MIKEYS POKER CLUB',517,125);ctx.fillStyle='#f3edda8c';ctx.fillText('MIKEYS POKER CLUB',512,120);ctx.font=body(18);ctx.fillStyle='#f3edda66';ctx.fillText('T E X A S   H O L D ’ E M',512,166);});}
-export const chipColors:Record<number,string>={1:'#ece4cf',5:'#e0353a',25:'#2a282c',100:'#cf9f3f',500:'#7a1f2c',1000:'#243a5e'};
+/** Chips stay inside the three inks; denominations differ by body/spot pairing and the printed value. */
+export const chipColors:Record<number,{body:string;spot:string;label:string}>={
+  1:{body:PAPER,spot:INK,label:INK},5:{body:RED,spot:PAPER,label:PAPER},25:{body:INK,spot:PAPER,label:PAPER},
+  100:{body:PAPER,spot:RED,label:INK},500:{body:INK,spot:RED,label:PAPER},1000:{body:'#a12430',spot:INK,label:PAPER},
+};
 export function chipTexture(value:number){return texture(`chip-${value}`,128,128,ctx=>{
-  const light=value===1||value===100;ctx.fillStyle=chipColors[value];ctx.fillRect(0,0,128,128);
-  ctx.fillStyle=light?RED:PAPER;for(let i=0;i<8;i++){ctx.save();ctx.translate(64,64);ctx.rotate(i*Math.PI/4);ctx.fillRect(-7,-63,14,19);ctx.restore();}
-  ctx.strokeStyle=light?INK:PAPER;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(64,64,40,0,Math.PI*2);ctx.stroke();
-  ctx.fillStyle=light?INK:PAPER;ctx.font=display(value>=1000?30:36);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(value),64,67);
+  const {body:fill,spot,label}=chipColors[value];ctx.fillStyle=fill;ctx.fillRect(0,0,128,128);
+  ctx.fillStyle=spot;for(let i=0;i<8;i++){ctx.save();ctx.translate(64,64);ctx.rotate(i*Math.PI/4);ctx.fillRect(-7,-63,14,19);ctx.restore();}
+  ctx.save();ctx.beginPath();ctx.arc(64,64,38,0,Math.PI*2);ctx.clip();halftone(ctx,128,128,5,.9,spot+'33');ctx.restore();
+  ctx.strokeStyle=label;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(64,64,40,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=label;ctx.font=display(value>=1000?30:36);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(value),64,67);
+});}
+/** Chip edge: the body ink broken by eight spot blocks, wrapped around the cylinder side. */
+export function chipEdgeTexture(value:number){return texture(`chip-edge-${value}`,128,8,ctx=>{
+  const {body:fill,spot}=chipColors[value];ctx.fillStyle=fill;ctx.fillRect(0,0,128,8);
+  ctx.fillStyle=spot;for(let i=0;i<8;i++)ctx.fillRect(i*16+5,0,6,8);
+});}
+/** Dealer button: paper puck, ink ring, a big display-face D. */
+export function dealerTexture(){return texture('dealer',128,128,ctx=>{
+  ctx.fillStyle=PAPER;ctx.fillRect(0,0,128,128);
+  ctx.strokeStyle=INK;ctx.lineWidth=5;ctx.beginPath();ctx.arc(64,64,52,0,Math.PI*2);ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=display(64);ctx.fillStyle='#e8323599';ctx.fillText('D',67,72);ctx.fillStyle=INK;ctx.fillText('D',64,69);
 });}

@@ -18,12 +18,14 @@ export interface Pot { amount: number; eligible: number[]; contributors: number[
 export interface Award { playerIndex: number; amount: number; potIndex: number; refund?: boolean; }
 export interface GameEvent { id: number; type: 'DEAL' | 'BET' | 'FOLD' | 'CHECK' | 'COLLECT' | 'BOARD' | 'SHOWDOWN' | 'AWARD' | 'COMPLETE'; playerIndex?: number; amount?: number; cards?: Card[]; contributions?: {playerIndex:number;amount:number}[]; }
 export interface HistoryEntry { id: number; hand: number; street: Phase; text: string; }
+/** A public betting decision. `to` is the actor's street total afterwards; `aggressive` marks a bet or raise. */
+export interface PublicAction { seat: number; street: Phase; type: Action['type']; to: number; aggressive: boolean; }
 export interface GameState {
   config: Config; phase: Phase; handNumber: number; dealerIndex: number; smallBlindIndex: number;
   bigBlindIndex: number; currentPlayerIndex: number; currentBet: number; minimumRaise: number;
   players: Player[]; communityCards: Card[]; deck: Card[]; burned: Card[]; pot: number;
   sidePots: Pot[]; awards: Award[]; results: Record<number, EvaluatedHand>;
-  actionHistory: HistoryEntry[]; events: GameEvent[]; nextEventId: number;
+  actionHistory: HistoryEntry[]; handActions: PublicAction[]; events: GameEvent[]; nextEventId: number;
   rng: number; largestPot: number; initialChips: number;
 }
 export interface Observation {
@@ -31,5 +33,5 @@ export interface Observation {
   player: Pick<Player, 'stack' | 'currentBet' | 'aiProfile' | 'seat'>;
   opponents: { seat: number; stack: number; currentBet: number; allIn: boolean }[];
   dealerIndex: number; seatCount: number; legal: LegalActions;
-  history: HistoryEntry[]; difficulty: Config['difficulty'];
+  history: HistoryEntry[]; actions: PublicAction[]; difficulty: Config['difficulty'];
 }

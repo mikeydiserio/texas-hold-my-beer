@@ -1,11 +1,17 @@
-import { cardText, newDeck, shuffle } from './cards';
+import { cardText, newDeck, random, shuffle } from './cards';
 import { evaluate } from './evaluator';
 import { awardPots, buildPots } from './pots';
 import type { Action, Card, Config, GameEvent, GameState, LegalActions, Observation, Phase, Player, Personality } from './types';
 export const DEFAULT_CONFIG: Config={playerCount:6,startingStack:2500,smallBlind:25,bigBlind:50,difficulty:'Normal'};
 export const BETTING_PHASES: Phase[]=['PREFLOP','FLOP','TURN','RIVER'];
-const names=['You','Sofia','Theo','Mei','Jules','Nico','Amara','Leo','Isla'];
-const profiles: Personality[]=['BALANCED','TIGHT','AGGRESSIVE','BALANCED','LOOSE','PASSIVE','MANIAC','TIGHT','AGGRESSIVE'];
+const names=['Sofia','Theo','Mei','Jules','Nico','Amara','Leo','Isla'];
+const profiles: Personality[]=['BALANCED','TIGHT','AGGRESSIVE','LOOSE','PASSIVE','MANIAC','TIGHT','BALANCED'];
+/** Names and personalities are dealt independently per table, from a stream derived from (but not consuming) the deck seed. */
+function cast(seed:number){
+  let r=Math.imul(seed^0x9e3779b9,2654435761)>>>0||1;
+  const deal=<T,>(items:T[])=>{const out=[...items];for(let i=out.length-1;i>0;i--){const [x,next]=random(r);r=next;const j=Math.floor(x*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;};
+  return {names:['You',...deal(names)],profiles:['BALANCED' as Personality,...deal(profiles)]};
+}
 export function validateConfig(c:Config) {
   for(const key of ['playerCount','startingStack','smallBlind','bigBlind'] as const) if(!Number.isSafeInteger(c[key])) throw new Error('Use whole numbers for players, stacks and blinds.');
   if(c.playerCount<2||c.playerCount>9) throw new Error('Choose 2–9 players.');
@@ -14,10 +20,10 @@ export function validateConfig(c:Config) {
   if(!['Casual','Normal','Strong'].includes(c.difficulty)) throw new Error('Invalid difficulty.');
 }
 export function createGame(config: Config=DEFAULT_CONFIG, seed=1): GameState {
-  validateConfig(config);
+  validateConfig(config);const table=cast(seed);
   return {config:{...config},phase:'SETUP',handNumber:0,dealerIndex:-1,smallBlindIndex:-1,bigBlindIndex:-1,currentPlayerIndex:-1,currentBet:0,minimumRaise:config.bigBlind,
-    players:Array.from({length:config.playerCount},(_,i)=>({id:`player-${i}`,name:names[i],seat:i,stack:config.startingStack,holeCards:[],currentBet:0,totalContribution:0,folded:false,allIn:false,eliminated:false,isHuman:i===0,aiProfile:profiles[i],actedBet:null,lastAction:''})),
-    communityCards:[],deck:[],burned:[],pot:0,sidePots:[],awards:[],results:{},actionHistory:[],events:[],nextEventId:1,rng:seed>>>0||1,largestPot:0,initialChips:config.startingStack*config.playerCount};
+    players:Array.from({length:config.playerCount},(_,i)=>({id:`player-${i}`,name:table.names[i],seat:i,stack:config.startingStack,holeCards:[],currentBet:0,totalContribution:0,folded:false,allIn:false,eliminated:false,isHuman:i===0,aiProfile:table.profiles[i],actedBet:null,lastAction:''})),
+    communityCards:[],deck:[],burned:[],pot:0,sidePots:[],awards:[],results:{},actionHistory:[],handActions:[],events:[],nextEventId:1,rng:seed>>>0||1,largestPot:0,initialChips:config.startingStack*config.playerCount};
 }
 function emit(s:GameState,event:Omit<GameEvent,'id'>) { s.events.push({...event,id:s.nextEventId++}); s.events=s.events.slice(-100); }
 function log(s:GameState,text:string) { s.actionHistory.push({id:s.nextEventId++,hand:s.handNumber,street:s.phase,text}); s.actionHistory=s.actionHistory.slice(-1000); }
@@ -36,7 +42,7 @@ export function startHand(state:GameState):GameState {
   const s=structuredClone(state); const active=s.players.filter(p=>p.stack>0);
   if(active.length<2){s.phase='TABLE_COMPLETE';s.currentPlayerIndex=-1;return s;}
   const previousBB=s.bigBlindIndex;
-  s.handNumber++; s.phase='PREFLOP';s.communityCards=[];s.burned=[];s.pot=0;s.awards=[];s.results={};s.sidePots=[];
+  s.handNumber++; s.phase='PREFLOP';s.communityCards=[];s.burned=[];s.pot=0;s.awards=[];s.results={};s.sidePots=[];s.handActions=[];
   for(const p of s.players){p.eliminated=p.stack===0;p.folded=p.eliminated;p.allIn=false;p.holeCards=[];p.currentBet=0;p.totalContribution=0;p.actedBet=null;p.lastAction=p.eliminated?'Out':'';}
   // Moving button; at the transition to heads-up, advance the BB to avoid a repeated BB.
   if(active.length===2 && previousBB>=0){s.bigBlindIndex=nextSeat(s,previousBB,p=>!p.eliminated);s.dealerIndex=nextSeat(s,s.bigBlindIndex,p=>!p.eliminated);s.smallBlindIndex=s.dealerIndex;}
@@ -75,7 +81,7 @@ export function act(state:GameState,action:Action,index=state.currentPlayerIndex
   const key=({FOLD:'fold',CHECK:'check',CALL:'call',ALL_IN:'allIn',BET:'bet',RAISE:'raise'} as const)[action.type];
   if(!legal[key])throw new Error(`Illegal ${action.type.toLowerCase()} action.`);
   if('amount'in action && (!Number.isSafeInteger(action.amount)||action.amount<legal.minRaiseTo||action.amount>legal.maxRaiseTo))throw new Error('Raise amount is outside the legal range.');
-  const s=structuredClone(state),p=s.players[index];
+  const s=structuredClone(state),p=s.players[index];let aggressive=false;
   if(action.type==='FOLD'){p.folded=true;p.lastAction='Fold';emit(s,{type:'FOLD',playerIndex:index});}
   else if(action.type==='CHECK'){p.lastAction='Check';emit(s,{type:'CHECK',playerIndex:index});}
   else {
@@ -83,7 +89,9 @@ export function act(state:GameState,action:Action,index=state.currentPlayerIndex
     const before=s.currentBet;pay(s,index,target-p.currentBet);
     if(target>before){const increment=target-before;if(increment>=s.minimumRaise)s.minimumRaise=increment;s.currentBet=target;}
     p.lastAction=p.allIn?`All-in ${target}`:target>before?`${before===0?'Bet':'Raise to'} ${target}`:`Call ${legal.callAmount}`;
+    aggressive=target>before;
   }
+  s.handActions.push({seat:index,street:s.phase,type:action.type,to:p.currentBet,aggressive});
   p.actedBet=s.currentBet;log(s,`${p.name} · ${p.lastAction}`);finishIfReady(s,index);assertInvariants(s);return s;
 }
 function settle(s:GameState,showdown:boolean) {
@@ -111,7 +119,7 @@ export function advance(state:GameState):GameState {
 }
 /** The only AI input constructor. No other players' cards, deck, burns, or engine RNG. */
 export function observe(s:GameState,index=s.currentPlayerIndex):Observation {
-  const p=s.players[index];return {holeCards:[...p.holeCards],communityCards:[...s.communityCards],phase:s.phase,pot:s.pot,bigBlind:s.config.bigBlind,player:{stack:p.stack,currentBet:p.currentBet,aiProfile:p.aiProfile,seat:p.seat},opponents:s.players.flatMap((q,i)=>i!==index&&live(q)?[{seat:q.seat,stack:q.stack,currentBet:q.currentBet,allIn:q.allIn}]:[]),dealerIndex:s.dealerIndex,seatCount:s.players.length,legal:legalActions(s,index),history:s.actionHistory.filter(h=>h.hand===s.handNumber).map(h=>({...h})),difficulty:s.config.difficulty};
+  const p=s.players[index];return {holeCards:[...p.holeCards],communityCards:[...s.communityCards],phase:s.phase,pot:s.pot,bigBlind:s.config.bigBlind,player:{stack:p.stack,currentBet:p.currentBet,aiProfile:p.aiProfile,seat:p.seat},opponents:s.players.flatMap((q,i)=>i!==index&&live(q)?[{seat:q.seat,stack:q.stack,currentBet:q.currentBet,allIn:q.allIn}]:[]),dealerIndex:s.dealerIndex,seatCount:s.players.length,legal:legalActions(s,index),history:s.actionHistory.filter(h=>h.hand===s.handNumber).map(h=>({...h})),actions:s.handActions.map(a=>({...a})),difficulty:s.config.difficulty};
 }
 export function assertInvariants(s:GameState) {
   if(s.players.some(p=>p.stack<0||!Number.isSafeInteger(p.stack)||p.currentBet<0||p.totalContribution<p.currentBet))throw new Error('Invalid chip state.');
